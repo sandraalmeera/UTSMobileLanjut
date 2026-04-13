@@ -27,4 +27,15 @@
     <string name="exit">Exit</string>
     <string name="play_again">Play Again</string>
     <string name="wrong_guess">Wrong Guess!</string>
+    <!-- History feature strings -->
+    <string name="view_history">History Jawaban Benar</string>
+    <string name="history_title">History Jawaban Benar</string>
+    <string name="history_empty">Belum ada jawaban benar.\nMainkan game dan tebak kata dengan benar!</string>
+    <string name="history_count">Total kata benar: %d</string>
+    <string name="clear_history">Hapus History</string>
+    <string name="clear_history_title">Hapus Semua History?</string>
+    <string name="clear_history_confirm">Semua riwayat jawaban benar akan dihapus secara permanen.</string>
+    <string name="clear">Hapus</string>
+    <string name="cancel">Batal</string>
+    <string name="back">Kembali</string>
 </resources>

@@ -23,5 +23,7 @@ data class GameUiState(
     val currentWordCount: Int = 1,
     val score: Int = 0,
     val isGuessedWordWrong: Boolean = false,
-    val isGameOver: Boolean = false
+    val isGameOver: Boolean = false,
+    // History of correct answers loaded from DataStore (persistent)
+    val correctAnswerHistory: List<String> = emptyList()
 )

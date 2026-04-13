@@ -16,10 +16,13 @@
 
 package com.example.unscramble.ui
 
+import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.unscramble.data.AnswerHistoryRepository
 import com.example.unscramble.data.MAX_NO_OF_WORDS
 import com.example.unscramble.data.SCORE_INCREASE
 import com.example.unscramble.data.allWords
@@ -27,11 +30,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /**
- * ViewModel containing the app data and methods to process the data
+ * ViewModel containing the app data and methods to process the data.
+ * Extends AndroidViewModel to access Application context for DataStore.
  */
-class GameViewModel : ViewModel() {
+class GameViewModel(application: Application) : AndroidViewModel(application) {
+
+    // Repository for persistent answer history via DataStore
+    private val historyRepository = AnswerHistoryRepository(application)
 
     // Game UI state
     private val _uiState = MutableStateFlow(GameUiState())
@@ -46,6 +54,14 @@ class GameViewModel : ViewModel() {
 
     init {
         resetGame()
+        // Observe DataStore and keep uiState.correctAnswerHistory in sync
+        viewModelScope.launch {
+            historyRepository.correctAnswersHistory.collect { historyList ->
+                _uiState.update { currentState ->
+                    currentState.copy(correctAnswerHistory = historyList)
+                }
+            }
+        }
     }
 
     /*
@@ -53,25 +69,36 @@ class GameViewModel : ViewModel() {
      */
     fun resetGame() {
         usedWords.clear()
-        _uiState.value = GameUiState(currentScrambledWord = pickRandomWordAndShuffle())
+        _uiState.update { currentState ->
+            currentState.copy(
+                currentScrambledWord = pickRandomWordAndShuffle(),
+                currentWordCount = 1,
+                score = 0,
+                isGuessedWordWrong = false,
+                isGameOver = false
+            )
+        }
     }
 
     /*
      * Update the user's guess
      */
-    fun updateUserGuess(guessedWord: String){
+    fun updateUserGuess(guessedWord: String) {
         userGuess = guessedWord
     }
 
     /*
      * Checks if the user's guess is correct.
-     * Increases the score accordingly.
+     * Increases the score accordingly and saves to history if correct.
      */
     fun checkUserGuess() {
         if (userGuess.equals(currentWord, ignoreCase = true)) {
             // User's guess is correct, increase the score
-            // and call updateGameState() to prepare the game for next round
             val updatedScore = _uiState.value.score.plus(SCORE_INCREASE)
+            // Save the correct answer to persistent DataStore history
+            viewModelScope.launch {
+                historyRepository.addCorrectAnswer(currentWord)
+            }
             updateGameState(updatedScore)
         } else {
             // User's guess is wrong, show an error
@@ -93,11 +120,20 @@ class GameViewModel : ViewModel() {
     }
 
     /*
+     * Clear all answer history from DataStore
+     */
+    fun clearHistory() {
+        viewModelScope.launch {
+            historyRepository.clearHistory()
+        }
+    }
+
+    /*
      * Picks a new currentWord and currentScrambledWord and updates UiState according to
      * current game state.
      */
     private fun updateGameState(updatedScore: Int) {
-        if (usedWords.size == MAX_NO_OF_WORDS){
+        if (usedWords.size == MAX_NO_OF_WORDS) {
             //Last round in the game, update isGameOver to true, don't pick a new word
             _uiState.update { currentState ->
                 currentState.copy(
@@ -106,7 +142,7 @@ class GameViewModel : ViewModel() {
                     isGameOver = true
                 )
             }
-        } else{
+        } else {
             // Normal round in the game
             _uiState.update { currentState ->
                 currentState.copy(
